@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String           @id @default(uuid())
+  name              String
+  email             String           @unique
+  password          String
+  phone             String?
+  role              String           @default("STUDENT")
+  status            String           @default("PENDING")
+  image             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  activityLogs      ActivityLog[]
+  auditTrails       AuditTrail[]
+  coursesInstructed Course[]         @relation("InstructedCourses")
+  leadsAssigned     Lead[]           @relation("AssignedLeads")
+  studentProfile    Student?
+  tasksAssigned     Task[]           @relation("AssignedTasks")
+  permissions       UserPermission[]
+}
+
+model Lead {
+  id             String    @id @default(uuid())
+  name           String
+  phone          String?
+  email          String?
+  source         String?
+  status         String    @default("NEW")
+  notes          String?
+  followUpDate   DateTime?
+  assignedTo     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  assignedToUser User?     @relation("AssignedLeads", fields: [assignedTo], references: [id])
+}
+
+model Student {
+  id          String       @id @default(uuid())
+  userId      String       @unique
+  bio         String?
+  level       String?
+  joinedAt    DateTime     @default(now())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  attendance  Attendance[]
+  enrollments Enrollment[]
+  payments    Payment[]
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Course {
+  id           String       @id @default(uuid())
+  title        String
+  description  String?
+  price        Float
+  thumbnail    String?
+  instructorId String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  instructor   User?        @relation("InstructedCourses", fields: [instructorId], references: [id])
+  enrollments  Enrollment[]
+  lectures     Lecture[]
+}
+
+model Lecture {
+  id         String       @id @default(uuid())
+  courseId   String
+  title      String
+  videoUrl   String?
+  fileUrl    String?
+  date       DateTime
+  createdAt  DateTime     @default(now())
+  attendance Attendance[]
+  course     Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model Enrollment {
+  id        String   @id @default(uuid())
+  studentId String
+  courseId  String
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id        String    @id @default(uuid())
+  studentId String
+  amount    Float
+  method    String
+  status    String
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model Attendance {
+  id        String   @id @default(uuid())
+  studentId String
+  lectureId String
+  status    String
+  date      DateTime
+  lecture   Lecture  @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id             String    @id @default(uuid())
+  title          String
+  description    String?
+  assignedTo     String?
+  status         String    @default("TODO")
+  deadline       DateTime?
+  createdAt      DateTime  @default(now())
+  assignedToUser User?     @relation("AssignedTasks", fields: [assignedTo], references: [id])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  details   String
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model AuditTrail {
+  id        String   @id @default(uuid())
+  userId    String?
+  entity    String
+  entityId  String
+  action    String
+  oldValues String?
+  newValues String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model UserPermission {
+  id         String @id @default(uuid())
+  userId     String
+  permission String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permission])
+}
